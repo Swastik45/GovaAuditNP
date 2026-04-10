@@ -53,55 +53,65 @@ export default function GovAuditDashboard() {
   const successRate = scannedCount > 0 ? (doneCount / scannedCount) * 100 : 0;
 
   const handleExportPDF = async () => {
-    if (!reportAreaRef.current) return;
-    setIsExporting(true);
-    
-    try {
-      // Small buffer for DOM stability
-      await new Promise(resolve => setTimeout(resolve, 150));
+  if (!reportAreaRef.current) return;
+  setIsExporting(true);
+  
+  try {
+    const canvas = await html2canvas(reportAreaRef.current, { 
+      scale: 2, 
+      useCORS: true,
+      backgroundColor: "#FBFBFE",
+      logging: false,
+      onclone: (clonedDoc) => {
+        // 1. Create a "Sanitization Style" block
+        const style = clonedDoc.createElement('style');
+        style.innerHTML = `
+          * { 
+            color-scheme: light !important;
+            /* Force all colors to standard HEX/RGB */
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            filter: none !important;
+            transition: none !important;
+            animation: none !important;
+          }
+          /* Targeted fix for Tailwind's modern color defaults */
+          .bg-white { background-color: #ffffff !important; }
+          .text-slate-900 { color: #0f172a !important; }
+        `;
+        clonedDoc.head.appendChild(style);
 
-      const canvas = await html2canvas(reportAreaRef.current, { 
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: "#FBFBFE",
-        logging: false,
-        onclone: (clonedDoc) => {
-          const elements = clonedDoc.getElementsByTagName("*");
-          for (let i = 0; i < elements.length; i++) {
-            const el = elements[i] as HTMLElement;
-            const style = window.getComputedStyle(el);
-
-            // Strip modern color functions that crash html2canvas (LAB/OKLCH)
-            if (style.color.includes('lab') || style.color.includes('oklch')) {
-              el.style.color = "#0F172A"; 
-            }
-            if (style.backgroundColor.includes('lab') || style.backgroundColor.includes('oklch')) {
-              el.style.backgroundColor = style.backgroundColor.includes('rgba') ? "transparent" : "#FFFFFF";
-            }
-
-            // Fix for the TypeScript 'webkitBackdropFilter' error
-            if (style.backdropFilter !== 'none') {
-              el.style.backdropFilter = "none";
-              (el.style as any)["webkitBackdropFilter"] = "none";
-            }
+        // 2. Manual cleanup loop for any remaining computed lab() values
+        const allElements = clonedDoc.getElementsByTagName("*");
+        for (let i = 0; i < allElements.length; i++) {
+          const el = allElements[i] as HTMLElement;
+          // If the background contains 'var(' or 'oklch' or 'lab', reset it
+          const bg = window.getComputedStyle(el).backgroundColor;
+          if (bg.includes('lab') || bg.includes('oklch')) {
+            el.style.setProperty('background-color', '#ffffff', 'important');
+          }
+          const col = window.getComputedStyle(el).color;
+          if (col.includes('lab') || col.includes('oklch')) {
+            el.style.setProperty('color', '#000000', 'important');
           }
         }
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`GovAudit-NP-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error("PDF Export Failed:", error);
-      alert("Export failed due to a rendering conflict. See console for details.");
-    } finally {
-      setIsExporting(false);
-    }
-  };
+      }
+    });
+    
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`GovAudit-Report.pdf`);
+  } catch (error) {
+    console.error("PDF Export Failed:", error);
+    alert("Still hitting a CSS color error. Try using Chrome or Firefox if you are on a different browser.");
+  } finally {
+    setIsExporting(false);
+  }
+};
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 font-mono">
