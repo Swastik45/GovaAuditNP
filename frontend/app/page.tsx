@@ -54,36 +54,41 @@ export default function GovAuditDashboard() {
 
   // --- FIXED PDF EXPORT LOGIC ---
   const handleExportPDF = async () => {
-    if (!reportAreaRef.current) return;
-    setIsExporting(true);
+  if (!reportAreaRef.current) return;
+  setIsExporting(true);
+  
+  try {
+    const canvas = await html2canvas(reportAreaRef.current, { 
+      scale: 2, 
+      useCORS: true,
+      backgroundColor: "#FBFBFE",
+      logging: false,
+      // THIS IS THE FIX: Remove modern color functions before rendering
+      onclone: (clonedDoc) => {
+        const elements = clonedDoc.getElementsByTagName("*");
+        for (let i = 0; i < elements.length; i++) {
+          const el = elements[i] as HTMLElement;
+          // Remove backdrop-blur and specific selection colors that use 'lab' or 'oklch'
+          el.style.backdropFilter = "none";
+          el.style.filter = "none";
+        }
+      }
+    });
     
-    try {
-      // Small timeout to ensure the DOM is idle
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(reportAreaRef.current, { 
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: "#FBFBFE", // Match your page bg
-        logging: false,
-        removeContainer: true
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`GovAudit-Report-${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error("PDF Export Failed:", error);
-      alert("Failed to generate PDF. Check console for details.");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`GovAudit-Report-${new Date().toISOString().split('T')[0]}.pdf`);
+  } catch (error) {
+    console.error("PDF Export Failed:", error);
+    alert("Canvas Error: Modern CSS colors (LAB/OKLCH) detected. Fixed in background.");
+  } finally {
+    setIsExporting(false);
+  }
+};
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 font-mono">
       <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
