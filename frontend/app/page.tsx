@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import domtoimage from 'dom-to-image-more';
+
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -60,34 +60,37 @@ const handleExportPDF = async () => {
   setIsExporting(true);
   
   try {
-    // 1. Convert the DOM directly to a high-res PNG
+    // Dynamically import the library only when the button is clicked
+    const domtoimage = (await import('dom-to-image-more')).default;
+
+    // Small delay to ensure DOM stability
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     const dataUrl = await domtoimage.toPng(reportAreaRef.current, {
       quality: 1.0,
       bgcolor: '#FBFBFE',
       width: reportAreaRef.current.clientWidth,
       height: reportAreaRef.current.clientHeight,
-      // This library handles OKLCH/LAB better, but we still strip filters for speed
-      filter: (node: HTMLElement) => {
-    // Check if node.style exists before accessing it
-    if (node && node.style) {
-      node.style.backdropFilter = 'none';
-      (node.style as any).webkitBackdropFilter = 'none';
-    }
-    return true;
+      // Use a generic 'any' here for the filter to avoid SSR type issues
+      filter: (node: any) => {
+        if (node.style) {
+          node.style.backdropFilter = 'none';
+          (node.style as any).webkitBackdropFilter = 'none';
+        }
+        return true;
       }
     });
 
-    // 2. Insert that PNG into your PDF
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (reportAreaRef.current.clientHeight * pdfWidth) / reportAreaRef.current.clientWidth;
     
     pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`GovAudit-NP-Report.pdf`);
+    pdf.save(`GovAudit-Report.pdf`);
     
   } catch (error) {
     console.error("PDF Export Failed:", error);
-    alert("System rendering conflict. Try one last thing: Check if your browser is forced into 'Dark Mode' by an extension (like Dark Reader), which injects lab colors.");
+    alert("Export failed. This tool requires a browser environment.");
   } finally {
     setIsExporting(false);
   }
