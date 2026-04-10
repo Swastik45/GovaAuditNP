@@ -56,69 +56,74 @@ export default function GovAuditDashboard() {
   
 
 const handleExportPDF = async () => {
-  if (!reportAreaRef.current) return;
   setIsExporting(true);
   
   try {
-    // Dynamically import the library to avoid SSR/ReferenceErrors during build
-    const domtoimage = (await import('dom-to-image-more')).default;
+    // 1. Initialize PDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    let yPos = 20; // Starting vertical position
 
-    // 1. Create a "Print-Specific" container clone or inject styles
-    // We add a delay to ensure icons and fonts are fully loaded
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    const dataUrl = await domtoimage.toPng(reportAreaRef.current, {
-      quality: 1.0,
-      bgcolor: '#FBFBFE', // Force the exact background color
-      width: reportAreaRef.current.scrollWidth,
-      height: reportAreaRef.current.scrollHeight,
-      style: {
-        // --- CRITICAL CSS FIXES FOR PDF ---
-        'letter-spacing': 'normal',
-        'text-rendering': 'optimizeLegibility',
-        'transform': 'scale(1)', // Ensure no zoom interference
-      },
-      filter: (node: any) => {
-        // Remove interactive elements or blurs that cause 'lab' errors
-        if (node.style) {
-          node.style.backdropFilter = 'none';
-          (node.style as any).webkitBackdropFilter = 'none';
-          
-          // Fix overlapping headers (like in your screenshot)
-          if (node.tagName === 'H1') {
-             node.style.lineHeight = '1.1';
-             node.style.marginBottom = '20px';
-          }
-          
-          // Fix card spacing
-          if (node.classList?.contains('grid')) {
-             node.style.gap = '24px';
-          }
-        }
-        return true;
-      }
-    });
-
-    // 2. Setup jsPDF for A4
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (reportAreaRef.current.scrollHeight * pdfWidth) / reportAreaRef.current.scrollWidth;
-
-    // Add the image to the PDF
-    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    // 2. Add Header
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(22);
+    pdf.text("GOVAUDIT NP: REFORM REPORT", 15, yPos);
     
-    // Save with a timestamp
-    const fileName = `GovAudit-Report-${new Date().toISOString().split('T')[0]}.pdf`;
-    pdf.save(fileName);
+    yPos += 10;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Generated on: ${new Date().toLocaleString()}`, 15, yPos);
+    pdf.text(`Overall Success Rate: ${Math.round(successRate)}%`, 15, yPos + 5);
+    
+    yPos += 20;
+
+    // 3. Loop through EVERY Mission (The Logic Fix)
+    data.forEach((item, index) => {
+      const { status, reason, source } = parseAuditData(item.audit_data);
+
+      // Check if we need a new page
+      if (yPos > 270) {
+        pdf.addPage();
+        yPos = 20;
+      }
+
+      // Mission Box/Header
+      pdf.setFillColor(245, 245, 245);
+      pdf.rect(15, yPos, pageWidth - 30, 8, 'F');
+      
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`#${item.point_no} - ${item.title}`, 18, yPos + 5);
+
+      // Status Badge
+      const statusColor = status === 'DONE' ? [16, 185, 129] : [225, 29, 72];
+      pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+      pdf.text(status, pageWidth - 40, yPos + 5);
+
+      yPos += 12;
+
+      // Reason Text (Wrapped for multi-line)
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(80, 80, 80);
+      const splitReason = pdf.splitTextToSize(reason, pageWidth - 40);
+      pdf.text(splitReason, 18, yPos);
+      
+      yPos += (splitReason.length * 5) + 5;
+
+      // Evidence Link
+      pdf.setFontSize(8);
+      pdf.setTextColor(0, 0, 255);
+      pdf.text(`Source: ${source}`, 18, yPos);
+      
+      yPos += 10; // Space between cards
+    });
+
+    // 4. Save
+    pdf.save(`GovAudit-Full-Report.pdf`);
     
   } catch (error) {
-    console.error("PDF Export Failed:", error);
-    alert("Export failed. Please check if any 'Dark Mode' extensions are active.");
+    console.error("PDF Logic Error:", error);
   } finally {
     setIsExporting(false);
   }
