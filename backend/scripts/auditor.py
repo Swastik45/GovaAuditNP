@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+import subprocess
 import time
 import requests
 from groq import Groq
@@ -122,6 +123,22 @@ def archive_results():
 
 # Call this at the end of your main loop
 archive_results()
+
+def push_to_github():
+    try:
+        # 1. Add the updated JSON file
+        subprocess.run(["git", "add", "public/data/audit_results.json"], check=True)
+        
+        # 2. Commit with a timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        subprocess.run(["git", "commit", "-m", f"Audit Auto-Update: {timestamp}"], check=True)
+        
+        # 3. Push to GitHub
+        subprocess.run(["git", "push"], check=True)
+        
+        print("🚀 Live Dashboard Updated via GitHub/Vercel!")
+    except Exception as e:
+        print(f"❌ Auto-push failed: {e}")
 
 if __name__ == "__main__":
     run_full_audit()
