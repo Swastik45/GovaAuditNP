@@ -15,14 +15,26 @@ GROQ_KEY = os.getenv("GROQ_API_KEY")
 SERPER_KEY = os.getenv("SERPER_API_KEY")
 client = Groq(api_key=GROQ_KEY)
 
-# RATE LIMIT SETTINGS (For Groq Free Tier)
-BATCH_SIZE = 25  # Process 25 missions, then pause
-PAUSE_DURATION = 65  # Wait 65 seconds to reset the 1-minute quota
+# DYNAMIC DATES FOR 2026 ACCURACY
+CURRENT_DATE_STR = datetime.now().strftime("%B %Y") # e.g., "April 2026"
+
+# RATE LIMIT SETTINGS
+BATCH_SIZE = 25  
+PAUSE_DURATION = 65  
+
+# PATH RESOLUTION
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Adjusting these to match your structure
+MISSION_JSON = os.path.join(BASE_DIR, '../data/missions.json')
+OUTPUT_JSON = os.path.join(BASE_DIR, '../../frontend/public/data/audit_results.json')
+HISTORY_DIR = os.path.join(BASE_DIR, '../../frontend/public/data/history')
 
 def search_web_slim(query):
     url = "https://google.serper.dev/search"
     headers = {'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'}
-    payload = json.dumps({"q": query, "gl": "np", "tbs": "qdr:m"}) 
+    # Added the CURRENT_DATE_STR to the query to force 2026 results
+    enhanced_query = f"{query} {CURRENT_DATE_STR}"
+    payload = json.dumps({"q": enhanced_query, "gl": "np", "tbs": "qdr:m"}) 
     
     try:
         response = requests.post(url, headers=headers, data=payload)
@@ -43,24 +55,24 @@ def audit_mission(mission):
     search_data = search_web_slim(mission['search_query'])
     
     prompt = f"""
-    ROLE: Official Auditor for Nepal's 100-Point Reform Agenda.
+    ROLE: Official System Auditor for Nepal's 2026 Reform Agenda.
     MISSION: {mission['title']}
-    EXPECTED DEADLINE: {deadline_date.strftime('%Y-%m-%d')}
-    CURRENT DATE: {today.strftime('%Y-%m-%d')}
+    TARGET DEADLINE: {deadline_date.strftime('%Y-%m-%d')}
+    TODAY'S DATE: {today.strftime('%Y-%m-%d')}
     SEARCH CONTEXT: {json.dumps(search_data)}
     
-    LOGIC: 
-    - STATUS is 'DONE' if search shows government action occurred (ignore if late).
-    - STATUS is 'OVERDUE' if deadline passed AND no positive action found.
-    - STATUS is 'IN_PROGRESS' if deadline is future.
-    
+    CRITICAL AUDIT RULES:
+    1. A new 100-point reform agenda started MARCH 27, 2026. 
+    2. IGNORE failed actions from 2024 or 2025. We only care about progress made in 2026.
+    3. If search shows NTA/Government blocked apps or implemented changes in MARCH/APRIL 2026, status is 'DONE'.
+    4. If {today.strftime('%Y-%m-%d')} is past {deadline_date.strftime('%Y-%m-%d')} AND no 2026 action is found, status is 'OVERDUE'.
+
     FORMAT:
     STATUS: [DONE/OVERDUE/IN_PROGRESS]
-    REASON: [Short sentence]
+    REASON: [Short factual sentence citing 2026 data]
     SOURCE: [Link]
     """
 
-    # Retry logic for individual request failures
     for attempt in range(3):
         try:
             completion = client.chat.completions.create(
@@ -70,26 +82,21 @@ def audit_mission(mission):
             )
             return completion.choices[0].message.content
         except Exception as e:
-            print(f"⚠️ Groq error on point {mission['point_no']}, retrying...")
+            print(f"⚠️ Groq error, retrying... {e}")
             time.sleep(5)
     return "STATUS: ERROR\nREASON: API failed\nSOURCE: #"
 
 def run_full_audit():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    json_path = os.path.join(base_dir, '../data/missions.json')
-    output_path = os.path.join(base_dir, '../../frontend/public/data/audit_results.json')
-    
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    os.makedirs(os.path.dirname(OUTPUT_JSON), exist_ok=True)
 
-    with open(json_path, 'r') as f:
+    with open(MISSION_JSON, 'r') as f:
         missions = json.load(f)
     
     final_results = []
     
-    # BATCH PROCESSING LOGIC
     for i in range(0, len(missions), BATCH_SIZE):
         batch = missions[i : i + BATCH_SIZE]
-        print(f"\n--- Processing Batch {(i//BATCH_SIZE)+1} ({len(batch)} items) ---")
+        print(f"\n--- Processing Batch {(i//BATCH_SIZE)+1} ---")
         
         for m in batch:
             audit_text = audit_mission(m)
@@ -99,46 +106,43 @@ def run_full_audit():
                 "audit_data": audit_text,
                 "checked_at": datetime.now().isoformat()
             })
-            time.sleep(1) # Small gap between searches for Serper
+            time.sleep(1) 
 
-        # Wait if there are more batches to go
         if i + BATCH_SIZE < len(missions):
-            print(f"⏳ Rate limit protection: Sleeping for {PAUSE_DURATION} seconds...")
+            print(f"⏳ Sleeping {PAUSE_DURATION}s to reset Groq Quota...")
             time.sleep(PAUSE_DURATION)
 
-    with open(output_path, 'w') as f:
+    with open(OUTPUT_JSON, 'w') as f:
         json.dump(final_results, f, indent=4)
     
-    print(f"\n✅ FULL AUDIT COMPLETE: 100/100 points processed.")
+    print(f"\n✅ Audit File Written: {OUTPUT_JSON}")
 
 def archive_results():
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    history_dir = "public/data/history"
-    
-    if not os.path.exists(history_dir):
-        os.makedirs(history_dir)
+    if not os.path.exists(HISTORY_DIR):
+        os.makedirs(HISTORY_DIR)
         
-    shutil.copy("public/data/audit_results.json", f"{history_dir}/audit_{timestamp}.json")
-    print(f"✅ Audit archived to history/audit_{timestamp}.json")
-
-# Call this at the end of your main loop
-archive_results()
+    dest = os.path.join(HISTORY_DIR, f"audit_{timestamp}.json")
+    shutil.copy(OUTPUT_JSON, dest)
+    print(f"📦 Archived snapshot to: {dest}")
 
 def push_to_github():
     try:
-        # 1. Add the updated JSON file
-        subprocess.run(["git", "add", "public/data/audit_results.json"], check=True)
+        # Move to the root of the repo to run git commands
+        repo_root = os.path.join(BASE_DIR, "../../")
         
-        # 2. Commit with a timestamp
+        # Git commands targeting the specific file
+        subprocess.run(["git", "add", "frontend/public/data/audit_results.json"], cwd=repo_root, check=True)
+        
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        subprocess.run(["git", "commit", "-m", f"Audit Auto-Update: {timestamp}"], check=True)
+        subprocess.run(["git", "commit", "-m", f"Audit Auto-Update: {timestamp}"], cwd=repo_root, check=True)
+        subprocess.run(["git", "push"], cwd=repo_root, check=True)
         
-        # 3. Push to GitHub
-        subprocess.run(["git", "push"], check=True)
-        
-        print("🚀 Live Dashboard Updated via GitHub/Vercel!")
+        print("🚀 LIVE: GitHub and Vercel updated successfully!")
     except Exception as e:
-        print(f"❌ Auto-push failed: {e}")
+        print(f"❌ Git Push Failed: {e}")
 
 if __name__ == "__main__":
     run_full_audit()
+    archive_results()
+    push_to_github() # Only uncomment this if you have git initialized and connected to a remote
