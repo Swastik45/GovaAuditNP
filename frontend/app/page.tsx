@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
+import domtoimage from 'dom-to-image-more';
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -52,62 +53,41 @@ export default function GovAuditDashboard() {
   const overdueCount = data.filter(m => parseAuditData(m.audit_data).status === 'OVERDUE').length;
   const successRate = scannedCount > 0 ? (doneCount / scannedCount) * 100 : 0;
 
-  const handleExportPDF = async () => {
+  
+
+const handleExportPDF = async () => {
   if (!reportAreaRef.current) return;
   setIsExporting(true);
   
   try {
-    const canvas = await html2canvas(reportAreaRef.current, { 
-      scale: 2, 
-      useCORS: true,
-      backgroundColor: "#FBFBFE",
-      logging: false,
-      onclone: (clonedDoc) => {
-        // 1. Create a "Sanitization Style" block
-        const style = clonedDoc.createElement('style');
-        style.innerHTML = `
-          * { 
-            color-scheme: light !important;
-            /* Force all colors to standard HEX/RGB */
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-            filter: none !important;
-            transition: none !important;
-            animation: none !important;
-          }
-          /* Targeted fix for Tailwind's modern color defaults */
-          .bg-white { background-color: #ffffff !important; }
-          .text-slate-900 { color: #0f172a !important; }
-        `;
-        clonedDoc.head.appendChild(style);
-
-        // 2. Manual cleanup loop for any remaining computed lab() values
-        const allElements = clonedDoc.getElementsByTagName("*");
-        for (let i = 0; i < allElements.length; i++) {
-          const el = allElements[i] as HTMLElement;
-          // If the background contains 'var(' or 'oklch' or 'lab', reset it
-          const bg = window.getComputedStyle(el).backgroundColor;
-          if (bg.includes('lab') || bg.includes('oklch')) {
-            el.style.setProperty('background-color', '#ffffff', 'important');
-          }
-          const col = window.getComputedStyle(el).color;
-          if (col.includes('lab') || col.includes('oklch')) {
-            el.style.setProperty('color', '#000000', 'important');
-          }
-        }
+    // 1. Convert the DOM directly to a high-res PNG
+    const dataUrl = await domtoimage.toPng(reportAreaRef.current, {
+      quality: 1.0,
+      bgcolor: '#FBFBFE',
+      width: reportAreaRef.current.clientWidth,
+      height: reportAreaRef.current.clientHeight,
+      // This library handles OKLCH/LAB better, but we still strip filters for speed
+      filter: (node: HTMLElement) => {
+    // Check if node.style exists before accessing it
+    if (node && node.style) {
+      node.style.backdropFilter = 'none';
+      (node.style as any).webkitBackdropFilter = 'none';
+    }
+    return true;
       }
     });
-    
-    const imgData = canvas.toDataURL('image/png');
+
+    // 2. Insert that PNG into your PDF
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    const pdfHeight = (reportAreaRef.current.clientHeight * pdfWidth) / reportAreaRef.current.clientWidth;
     
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`GovAudit-Report.pdf`);
+    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`GovAudit-NP-Report.pdf`);
+    
   } catch (error) {
     console.error("PDF Export Failed:", error);
-    alert("Still hitting a CSS color error. Try using Chrome or Firefox if you are on a different browser.");
+    alert("System rendering conflict. Try one last thing: Check if your browser is forced into 'Dark Mode' by an extension (like Dark Reader), which injects lab colors.");
   } finally {
     setIsExporting(false);
   }
