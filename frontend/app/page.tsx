@@ -60,42 +60,69 @@ const handleExportPDF = async () => {
   setIsExporting(true);
   
   try {
-    // Dynamically import the library only when the button is clicked
+    // Dynamically import the library to avoid SSR/ReferenceErrors during build
     const domtoimage = (await import('dom-to-image-more')).default;
 
-    // Small delay to ensure DOM stability
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // 1. Create a "Print-Specific" container clone or inject styles
+    // We add a delay to ensure icons and fonts are fully loaded
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     const dataUrl = await domtoimage.toPng(reportAreaRef.current, {
       quality: 1.0,
-      bgcolor: '#FBFBFE',
-      width: reportAreaRef.current.clientWidth,
-      height: reportAreaRef.current.clientHeight,
-      // Use a generic 'any' here for the filter to avoid SSR type issues
+      bgcolor: '#FBFBFE', // Force the exact background color
+      width: reportAreaRef.current.scrollWidth,
+      height: reportAreaRef.current.scrollHeight,
+      style: {
+        // --- CRITICAL CSS FIXES FOR PDF ---
+        'letter-spacing': 'normal',
+        'text-rendering': 'optimizeLegibility',
+        'transform': 'scale(1)', // Ensure no zoom interference
+      },
       filter: (node: any) => {
+        // Remove interactive elements or blurs that cause 'lab' errors
         if (node.style) {
           node.style.backdropFilter = 'none';
           (node.style as any).webkitBackdropFilter = 'none';
+          
+          // Fix overlapping headers (like in your screenshot)
+          if (node.tagName === 'H1') {
+             node.style.lineHeight = '1.1';
+             node.style.marginBottom = '20px';
+          }
+          
+          // Fix card spacing
+          if (node.classList?.contains('grid')) {
+             node.style.gap = '24px';
+          }
         }
         return true;
       }
     });
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    // 2. Setup jsPDF for A4
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (reportAreaRef.current.clientHeight * pdfWidth) / reportAreaRef.current.clientWidth;
-    
+    const pdfHeight = (reportAreaRef.current.scrollHeight * pdfWidth) / reportAreaRef.current.scrollWidth;
+
+    // Add the image to the PDF
     pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`GovAudit-Report.pdf`);
+    
+    // Save with a timestamp
+    const fileName = `GovAudit-Report-${new Date().toISOString().split('T')[0]}.pdf`;
+    pdf.save(fileName);
     
   } catch (error) {
     console.error("PDF Export Failed:", error);
-    alert("Export failed. This tool requires a browser environment.");
+    alert("Export failed. Please check if any 'Dark Mode' extensions are active.");
   } finally {
     setIsExporting(false);
   }
 };
-
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 font-mono">
       <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
