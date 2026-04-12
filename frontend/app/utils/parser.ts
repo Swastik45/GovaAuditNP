@@ -1,29 +1,26 @@
-// app/utils/parser.ts
+// utils/parser.ts
 
-export const parseAuditData = (rawText: string) => {
-  const findField = (key: string) => {
-    // Look for the key and capture everything until the end of the line
-    const regex = new RegExp(`${key}\\s*(.*)`, 'i');
-    const match = rawText.match(regex);
-    return match ? match[1].trim() : null;
-  };
+export function parseAuditData(rawData: string) {
+  try {
+    // Attempt to parse the internal string as JSON
+    // because the Python script now outputs a JSON-in-JSON format
+    const parsed = JSON.parse(rawData);
+    
+    return {
+      status: parsed.status || 'IN_PROGRESS',
+      reason: parsed.reason || 'No details provided.',
+      source: parsed.source && parsed.source !== '#' ? parsed.source : 'https://google.com'
+    };
+  } catch (e) {
+    // Fallback for any old data still in the text format
+    const statusMatch = rawData.match(/STATUS:\s*(\w+)/);
+    const reasonMatch = rawData.match(/REASON:\s*(.*)/);
+    const sourceMatch = rawData.match(/SOURCE:\s*(.*)/);
 
-  // 1. Extract Status
-  let status = "PENDING";
-  if (rawText.includes("STATUS: DONE")) status = "DONE";
-  else if (rawText.includes("STATUS: OVERDUE")) status = "OVERDUE";
-  else if (rawText.includes("STATUS: IN_PROGRESS")) status = "IN_PROGRESS";
-
-  // 2. Extract Source (Find the first URL)
-  const sourceMatch = rawText.match(/https?:\/\/[^\s]+(?=\n|$)/);
-  const source = sourceMatch ? sourceMatch[0] : "#";
-
-  // 3. Extract Reason (Search for REASON: or take first bit of text)
-  const reason = findField("REASON:") || rawText.split('\n')[0].substring(0, 150) + "...";
-
-  return { 
-    status, 
-    reason: reason.replace(/\*\*/g, ''), // Clean out markdown bolding
-    source 
-  };
-};
+    return {
+      status: statusMatch ? statusMatch[1].toUpperCase() : 'IN_PROGRESS',
+      reason: reasonMatch ? reasonMatch[1] : 'Analyzing current 2026 data...',
+      source: sourceMatch && sourceMatch[1] !== '#' ? sourceMatch[1].trim() : 'https://google.com'
+    };
+  }
+}
