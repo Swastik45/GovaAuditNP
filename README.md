@@ -7,6 +7,8 @@
 
 -----
 
+![GovAudit NP Dashboard Preview](https://github.com/Swastik45/GovaAuditNP/raw/main/frontend/public/Screenshot%20from%202026-04-19%2017-59-32.png)
+
 ## 🚀 The Mission
 
 Tracking political promises manually is tedious and prone to bias. This project automates the "Proof of Work" by:
