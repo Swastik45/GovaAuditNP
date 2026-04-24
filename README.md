@@ -1,85 +1,163 @@
 
 # 🏛️ GovAudit NP: 100-Point Reform Tracker
 
-**GovAudit NP** is an autonomous auditing engine designed to monitor and verify the execution of government reform agendas in Nepal. By combining **OSINT (Open Source Intelligence)** data gathering with **LLM-based policy analysis**, the system provides a real-time accountability dashboard.
+**GovAudit NP** is an autonomous auditing engine designed to monitor and verify the execution of government reform agendas in Nepal. By combining **OSINT (Open Source Intelligence)** data gathering with **LLM-based policy analysis**, the system provides a real-time accountability dashboard for tracking the 100-point reform agenda.
 
 ---
 
 ## 🚀 The Mission
+
 Tracking political promises manually is tedious and prone to bias. This project automates the "Proof of Work" by:
-1.  **Scanning:** A Python engine scrapes news portals and official bulletins.
-2.  **Verifying:** Uses Google Gemini 1.5 Pro to audit findings against specific reform points.
-3.  **Visualizing:** A Next.js 14 dashboard provides live stats and professional PDF report generation.
+
+1. **Scanning:** A Python engine scrapes news portals and official bulletins using web search APIs.
+2. **Verifying:** Uses Groq's LLM to audit findings against specific reform points.
+3. **Visualizing:** A Next.js dashboard provides live stats and professional PDF report generation.
 
 ## 🛠️ Tech Stack
 
 ### **Frontend (The Dashboard)**
-- **Next.js 14** (App Router)
-- **Tailwind CSS** (System Audit UI)
-- **Lucide React** (Dynamic Status Icons)
-- **jsPDF & html2canvas** (Report Export Logic)
+- **Next.js 14** (App Router with TypeScript)
+- **Tailwind CSS** (Modern UI styling)
+- **Lucide React** (Status icons)
+- **jsPDF & html2canvas** (PDF export functionality)
+- **dom-to-image-more** (Enhanced image generation)
 
 ### **Backend (The Auditor)**
 - **Python 3.10+**
-- **Google Gemini 1.5 Pro** (Reasoning Engine)
-- **Autonomous OSINT Logic** (Custom scraping & search integration)
-- **JSON Persistence** (Real-time data stream to frontend)
+- **Groq API** (LLM for reasoning and analysis)
+- **Serper API** (Google search integration)
+- **Requests** (HTTP client)
+- **python-dotenv** (Environment variable management)
+- **JSON** (Data persistence)
 
 ## 📊 Key Features
-- **Live Sync:** The dashboard auto-refreshes to reflect the Python script's current progress.
-- **Success Rate Analytics:** Dynamic math calculating "Done" vs "Scanned" targets.
-- **Evidence-First:** Every audit card includes a direct link to the source for verification.
-- **PDF Export:** Generate high-quality accountability reports with a single click.
-- **Archive System:** Automatically saves history snapshots of every completed audit run.
+
+- **Real-time Monitoring:** Dashboard auto-refreshes to show current audit progress
+- **Progress Analytics:** Calculates completion rates for each reform point
+- **Evidence-Based:** Every audit includes source links for verification
+- **PDF Reports:** Generate comprehensive accountability reports
+- **Historical Archive:** Automatic snapshots of audit runs with timestamps
+- **Deadline Tracking:** Monitors reform deadlines and progress timelines
 
 ## ⚙️ Setup & Installation
 
-### 1. Prerequisites
+### Prerequisites
 - Node.js (v18+)
 - Python (3.10+)
-- Gemini API Key (from Google AI Studio)
+- Groq API Key (from [Groq Console](https://console.groq.com/))
+- Serper API Key (from [Serper](https://serper.dev/))
 
-### 2. Backend Setup
-```bash
-# Navigate to backend folder
-cd backend
-pip install -r requirements.txt
+### Backend Setup
 
-# Create a .env file and add your key:
-# GEMINI_API_KEY=your_actual_key_here
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
 
-python auditor.py
-```
+2. Create a virtual environment (optional but recommended):
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
 
-### 3. Frontend Setup
-```bash
-# Navigate to frontend folder
-cd frontend
-npm install
-npm run dev
-```
+3. Install required packages:
+   ```bash
+   pip install groq requests python-dotenv
+   ```
+
+4. Create a `.env` file in the `backend` directory:
+   ```
+   GROQ_API_KEY=your_groq_api_key_here
+   SERPER_API_KEY=your_serper_api_key_here
+   ```
+
+5. Run the auditor script:
+   ```bash
+   python scripts/auditor.py
+   ```
+
+### Frontend Setup
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+3. Start the development server:
+   ```bash
+   pnpm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 📂 Project Structure
-```text
-├── frontend/               # Next.js Application
-│   ├── app/                # Dashboard UI & Logic
-│   │   └── utils/          # Data parsing & cleaning
-│   ├── public/data/        # Live audit results (JSON)
-├── backend/                # Python OSINT Engine
-│   ├── auditor.py          # LLM Reasoning & Scraper
-│   └── history/            # Archived audit snapshots
-├── .gitignore              # Multi-environment safety rules
-└── README.md               # You are here
+
+```
+nepal-gov-audit/
+├── README.md
+├── backend/
+│   ├── .env                    # Environment variables (API keys)
+│   ├── .venv/                  # Python virtual environment
+│   ├── data/
+│   │   └── missions.json       # 100 reform points data
+│   └── scripts/
+│       └── auditor.py          # Main auditing script
+├── frontend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   └── history/
+│   │   │       └── route.ts    # API endpoint for history
+│   │   ├── globals.css         # Global styles
+│   │   ├── layout.tsx          # Root layout
+│   │   ├── page.tsx            # Main dashboard page
+│   │   └── utils/
+│   │       └── parser.ts       # Data parsing utilities
+│   ├── public/
+│   │   └── data/
+│   │       ├── audit_results.json    # Current audit results
+│   │       └── history/              # Archived audit snapshots
+│   ├── package.json            # Node.js dependencies
+│   ├── pnpm-lock.yaml          # Package lock file
+│   ├── tsconfig.json           # TypeScript configuration
+│   ├── next.config.ts          # Next.js configuration
+│   ├── postcss.config.mjs      # PostCSS configuration
+│   └── eslint.config.mjs       # ESLint configuration
+└── types/
+    └── dom-to-image-more.d.ts  # Type definitions
 ```
 
+## 🚀 Usage
+
+1. **Run the Backend Auditor:** Execute `python scripts/auditor.py` to perform the latest audit scan.
+
+2. **View Dashboard:** Open the frontend at `http://localhost:3000` to see real-time results.
+
+3. **Generate Reports:** Use the dashboard's export feature to create PDF reports.
+
+4. **Review History:** Access previous audit runs through the history API.
+
 ## 🤝 Contributing
-This is an open-source technical project. If you'd like to improve the search algorithms or the LLM prompt engineering, feel free to fork the repo and submit a PR.
+
+This is an open-source project for promoting government transparency. Contributions are welcome:
+
+- **Bug Reports:** Open issues for any problems encountered
+- **Feature Requests:** Suggest improvements or new functionality
+- **Code Contributions:** Fork the repository and submit pull requests
+- **Documentation:** Help improve setup guides and documentation
 
 ## 📄 License
+
 MIT License - Developed for local governance and technical transparency.
 
 ---
-**Developed by Swastik Paudel** *Bachelor of Computer Applications (BCA) Student | Pokhara University*
+
+**Developed by Swastik Paudel**  
+*Bachelor of Computer Applications (BCA) Student | Pokhara University*
 ```
 
 ---
