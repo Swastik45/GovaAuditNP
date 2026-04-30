@@ -1,6 +1,15 @@
 // utils/parser.ts
 
-export function parseAuditData(rawData: string) {
+export function parseAuditData(rawData: any) {
+  if (typeof rawData === 'object' && rawData !== null) {
+    return {
+      status: rawData.status || 'IN_PROGRESS',
+      reason: rawData.reason || 'No details provided.',
+      source: rawData.source && rawData.source !== '#' ? rawData.source : 'https://google.com',
+      confidence: typeof rawData.confidence === 'number' ? rawData.confidence : 0
+    };
+  }
+
   try {
     // Attempt to parse the internal string as JSON
     // because the Python script now outputs a JSON-in-JSON format
@@ -9,7 +18,8 @@ export function parseAuditData(rawData: string) {
     return {
       status: parsed.status || 'IN_PROGRESS',
       reason: parsed.reason || 'No details provided.',
-      source: parsed.source && parsed.source !== '#' ? parsed.source : 'https://google.com'
+      source: parsed.source && parsed.source !== '#' ? parsed.source : 'https://google.com',
+      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0
     };
   } catch (e) {
     // Fallback for any old data still in the text format
@@ -20,7 +30,8 @@ export function parseAuditData(rawData: string) {
     return {
       status: statusMatch ? statusMatch[1].toUpperCase() : 'IN_PROGRESS',
       reason: reasonMatch ? reasonMatch[1] : 'Analyzing current 2026 data...',
-      source: sourceMatch && sourceMatch[1] !== '#' ? sourceMatch[1].trim() : 'https://google.com'
+      source: sourceMatch && sourceMatch[1] !== '#' ? sourceMatch[1].trim() : 'https://google.com',
+      confidence: 0
     };
   }
 }
