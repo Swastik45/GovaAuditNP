@@ -1,84 +1,90 @@
-
 # 🏛️ GovAudit NP: 100-Point Reform Tracker
 
-**GovAudit NP** is an autonomous auditing engine designed to monitor and verify the execution of government reform agendas in Nepal. By combining **OSINT (Open Source Intelligence)** data gathering with **LLM-based policy analysis**, the system provides a real-time accountability dashboard for tracking the 100-point reform agenda.
+**GovAudit NP** is a Nepal government reform monitoring tool that uses automated web search analysis and a live dashboard to track progress across a set of reform missions.
+
+The repository includes:
+- a Python backend auditor,
+- a Next.js dashboard frontend, and
+- a history snapshot archive for previous audit runs.
 
 ---
 
-## 🚀 The Mission
+## 🚀 What It Does
 
-Tracking political promises manually is tedious and prone to bias. This project automates the "Proof of Work" by:
-
-1. **Scanning:** A Python engine scrapes news portals and official bulletins using web search APIs.
-2. **Verifying:** Uses Groq's LLM to audit findings against specific reform points.
-3. **Visualizing:** A Next.js dashboard provides live stats and professional PDF report generation.
+- Reads reform mission data from `backend/data/missions.json`
+- Searches public sources via the Tavily search API
+- Extracts relevant text and classifies each mission's status
+- Writes results to `frontend/public/data/audit_results.json`
+- Archives each run to `frontend/public/data/history/`
+- Displays current status, filters, sorting, and PDF export in the dashboard
 
 ## 🛠️ Tech Stack
 
-### **Frontend (The Dashboard)**
-- **Next.js 14** (App Router with TypeScript)
-- **Tailwind CSS** (Modern UI styling)
-- **Lucide React** (Status icons)
-- **jsPDF & html2canvas** (PDF export functionality)
-- **dom-to-image-more** (Enhanced image generation)
+### Backend
+- Python 3.10+
+- `requests`
+- `python-dotenv`
+- `trafilatura`
+- Optional `spacy` support
+- Tavily search API integration
 
-### **Backend (The Auditor)**
-- **Python 3.10+**
-- **Groq API** (LLM for reasoning and analysis)
-- **Serper API** (Google search integration)
-- **Requests** (HTTP client)
-- **python-dotenv** (Environment variable management)
-- **JSON** (Data persistence)
+### Frontend
+- Next.js 16.2.3
+- React 19.2.4
+- Tailwind CSS 4
+- `lucide-react`
+- `jspdf`
+- `html2canvas`
+- `dom-to-image-more`
 
 ## 📊 Key Features
 
-- **Real-time Monitoring:** Dashboard auto-refreshes to show current audit progress
-- **Progress Analytics:** Calculates completion rates for each reform point
-- **Evidence-Based:** Every audit includes source links for verification
-- **PDF Reports:** Generate comprehensive accountability reports
-- **Historical Archive:** Automatic snapshots of audit runs with timestamps
-- **Deadline Tracking:** Monitors reform deadlines and progress timelines
+- **Automated audit scanning** for reform mission progress
+- **Live dashboard** with search and status filters
+- **PDF export** for reports
+- **Archived snapshots** for historical audit review
+- **Source references** for transparency
+- **Status classification** into `DONE`, `IN_PROGRESS`, `OVERDUE`, and `NO_DATA`
 
 ## ⚙️ Setup & Installation
 
 ### Prerequisites
-- Node.js (v18+)
-- Python (3.10+)
-- Groq API Key (from [Groq Console](https://console.groq.com/))
-- Serper API Key (from [Serper](https://serper.dev/))
+- Node.js 18+
+- Python 3.10+
+- `pnpm`
+- Tavily API key
 
 ### Backend Setup
 
-1. Navigate to the backend directory:
+1. Change into the backend directory:
    ```bash
    cd backend
    ```
 
-2. Create a virtual environment (optional but recommended):
+2. Create and activate a virtual environment:
    ```bash
    python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   source .venv/bin/activate
    ```
 
-3. Install required packages:
+3. Install dependencies:
    ```bash
-   pip install groq requests python-dotenv
+   pip install requests python-dotenv trafilatura
    ```
 
-4. Create a `.env` file in the `backend` directory:
-   ```
-   GROQ_API_KEY=your_groq_api_key_here
-   SERPER_API_KEY=your_serper_api_key_here
+4. Create a `.env` file in `backend/` with your API key:
+   ```env
+   TAVILY_API_KEY=your_tavily_api_key_here
    ```
 
-5. Run the auditor script:
+5. Run the auditor:
    ```bash
    python scripts/auditor.py
    ```
 
 ### Frontend Setup
 
-1. Navigate to the frontend directory:
+1. Change into the frontend directory:
    ```bash
    cd frontend
    ```
@@ -88,12 +94,15 @@ Tracking political promises manually is tedious and prone to bias. This project 
    pnpm install
    ```
 
-3. Start the development server:
+3. Start the frontend server:
    ```bash
    pnpm run dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Visit:
+   ```bash
+   http://localhost:3000
+   ```
 
 ## 📂 Project Structure
 
@@ -101,64 +110,55 @@ Tracking political promises manually is tedious and prone to bias. This project 
 nepal-gov-audit/
 ├── README.md
 ├── backend/
-│   ├── .env                    # Environment variables (API keys)
-│   ├── .venv/                  # Python virtual environment
+│   ├── .env
+│   ├── .venv/
 │   ├── data/
-│   │   └── missions.json       # 100 reform points data
+│   │   └── missions.json
 │   └── scripts/
-│       └── auditor.py          # Main auditing script
+│       └── auditor.py
 ├── frontend/
 │   ├── app/
 │   │   ├── api/
-│   │   │   └── history/
-│   │   │       └── route.ts    # API endpoint for history
-│   │   ├── globals.css         # Global styles
-│   │   ├── layout.tsx          # Root layout
-│   │   ├── page.tsx            # Main dashboard page
-│   │   └── utils/
-│   │       └── parser.ts       # Data parsing utilities
+│   │   │   └── history/route.ts
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   └── utils/parser.ts
 │   ├── public/
 │   │   └── data/
-│   │       ├── audit_results.json    # Current audit results
-│   │       └── history/              # Archived audit snapshots
-│   ├── package.json            # Node.js dependencies
-│   ├── pnpm-lock.yaml          # Package lock file
-│   ├── tsconfig.json           # TypeScript configuration
-│   ├── next.config.ts          # Next.js configuration
-│   ├── postcss.config.mjs      # PostCSS configuration
-│   └── eslint.config.mjs       # ESLint configuration
+│   │       ├── audit_results.json
+│   │       └── history/
+│   ├── package.json
+│   ├── pnpm-lock.yaml
+│   ├── tsconfig.json
+│   ├── next.config.ts
+│   ├── postcss.config.mjs
+│   └── eslint.config.mjs
 └── types/
-    └── dom-to-image-more.d.ts  # Type definitions
+    └── dom-to-image-more.d.ts
 ```
 
 ## 🚀 Usage
 
-1. **Run the Backend Auditor:** Execute `python scripts/auditor.py` to perform the latest audit scan.
-
-2. **View Dashboard:** Open the frontend at `http://localhost:3000` to see real-time results.
-
-3. **Generate Reports:** Use the dashboard's export feature to create PDF reports.
-
-4. **Review History:** Access previous audit runs through the history API.
+1. Run `python scripts/auditor.py` in `backend/` to generate the latest audit results.
+2. Start the frontend in `frontend/` with `pnpm run dev`.
+3. Open the dashboard at `http://localhost:3000`.
+4. Export reports using the dashboard export button.
+5. Review historical snapshots in `frontend/public/data/history/`.
 
 ## 🤝 Contributing
 
-This is an open-source project for promoting government transparency. Contributions are welcome:
-
-- **Bug Reports:** Open issues for any problems encountered
-- **Feature Requests:** Suggest improvements or new functionality
-- **Code Contributions:** Fork the repository and submit pull requests
-- **Documentation:** Help improve setup guides and documentation
+Contributions are welcome.
+- Report bugs
+- Request new features
+- Submit pull requests
+- Improve documentation
 
 ## 📄 License
 
-MIT License - Developed for local governance and technical transparency.
+MIT License
 
 ---
 
-**Developed by Swastik Paudel**  
+**Developed by Swastik Paudel**
 *Bachelor of Computer Applications (BCA) Student | Pokhara University*
-```
-
----
-
